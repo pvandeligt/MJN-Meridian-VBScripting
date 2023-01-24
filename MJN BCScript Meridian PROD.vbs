@@ -1,3 +1,8 @@
+'********************************************************CHANGE HISTORY*******************************************************
+' PvdL 24-01-2023	UpdateRenditionsRelatedToXrefMasterDoc		New function to Update rendition of related to Xref Masterdocs
+'					DocProjectCopyEvent_AfterReleaseToMaster	Call function UpdateRenditionsRelatedToXrefMasterDoc
+'*****************************************************************************************************************************
+
 '**************************************************************EVENTS*********************************************************
 '********************************************************************************************************************************
 Dim strTmpPath
@@ -567,6 +572,9 @@ Sub DocProjectCopyEvent_AfterReleaseToMaster(Batch, MasterDoc, ProjectCopyChange
         MasterDoc.Property("Branch") = "Reference"
     End If
     MasterDoc.ApplyPropertyValues 
+
+	'PvdL 24-01-2023: Update rendition of related to XrefMasterdocs
+	UpdateRenditionsRelatedToXrefMasterDoc MasterDoc, Batch
         
     'RAC 08-11-2012 Vullen PROPS initial en latest project
     If ProjectCopyChanged Then    
@@ -1229,6 +1237,45 @@ Function ModificationTime
     End If
     ModificationTime = Year(GMTTime2Local(Document.Modified)) & "-" & Maand & "-" & Dag & "_" & Uur & "_" & Minuut 
 End Function
+
+Function UpdateRenditionsRelatedToXrefMasterDoc(MasterDoc, Batch)
+	'PvdL 24-01-2023: New function to update renditions of related to Xref master documents
+	If Not MasterDoc Is Nothing Then
+		'Looking for documents with reference "AutoCAD Overlaid Reference")
+		If (MasterDoc.GetReferences("AutoCAD Overlaid Reference",True).Count > 0)= True Then   
+	        Set arrReferences = MasterDoc.GetReferences("AutoCAD Overlaid Reference",True) 
+        	For x = 0 To arrReferences.Count - 1 
+				'Only when document is not locked
+               	If arrReferences.Target(x).LockingProjectCopy Is Nothing Then 
+					'Only when document is in Master-branch
+	            	If arrReferences.Target(x).Branch = "Master" Then 					
+	                	Batch.PrintDetails "Document: " & arrReferences.Target(x).FileName & " rendered."
+		            	arrReferences.Target(x).UpdateRendition()
+					End If                        
+                Else
+                	Batch.PrintDetails "Document: " & arrReferences.Target(x).FileName & " is locked and will not be rendered."
+                End If
+	        Next 
+	    End If
+		'Looking for documents with reference "AutoCAD External Reference")
+        If (MasterDoc.GetReferences("AutoCAD External Reference", True).Count > 0) Then   
+          	Set arrReferences = MasterDoc.GetReferences("AutoCAD External Reference", True) 
+           	For x = 0 To arrReferences.Count - 1 
+				'Only when document is not locked
+            	If arrReferences.Target(x).LockingProjectCopy Is Nothing Then 
+					'Only when document is in Master-branch
+	            	If arrReferences.Target(x).Branch = "Master" Then 					
+                		Batch.PrintDetails "Document: " & arrReferences.Target(x).FileName & " rendered."
+		            	arrReferences.Target(x).UpdateRendition()
+					End If                        
+                Else
+                	Batch.PrintDetails "Document: " & arrReferences.Target(x).FileName & " is locked and will not be rendered."
+                End If
+			Next 
+	    End If
+	End If
+End Function
+
 '********************************************************************************************************************************
 '**************************************************************COMMANDS**********************************************************
 '********************************************************************************************************************************
